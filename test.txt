@@ -1,1 +1,3 @@
 0
+
+http://web.ing.puc.cl/~fsahli1/input_data.php?log_date=2013-12-12%2023:13:12&RUT=1-9&cardID=0001&binID=1loggerID=2
