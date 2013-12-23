@@ -1,9 +1,8 @@
-
 import csv
 import gspread
 import urllib2
 username = "francisco.sahli@gmail.com"
-password = "12365478maria"
+password = ""
 	
 def internet_on():
 	try:
