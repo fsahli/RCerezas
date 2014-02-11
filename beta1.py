@@ -5,10 +5,12 @@ import time, os, sys
 from datetime import datetime
 from readtest import readCard
 from csv_gspread import *
+from send_data import *
 import os.path
 from  arduino_connection import Arduino
 import thread
 import RPi.GPIO as GPIO
+import RPIO
 
 delay = 30
 path='/home/pi/RCerezas_v1/'
@@ -18,8 +20,8 @@ if not os.geteuid() == 0:
 ON, OFF = [1, 0]
 
 asking_serial = False
-
-def Int_shutdown(channel):  
+zero = False
+def Int_shutdown(gpio_id,val):  
 	print "Shutdown"
 	ard.ser.write('2')
 	os.system("sudo shutdown -h now")
@@ -27,12 +29,10 @@ def Int_shutdown(channel):
 	lcd.gotorc(1,0)
 	lcd.text("Apagando")
 	sys.exit("Apagando")
-def Int_shutdown2(channel):
-	print "Zero"
-	while ard.asking:
-		time.sleep(0.05)
+def Int_shutdown2(gpio_id,val):
 	ard.set_zero()
-
+#	print "Zero"
+	print time.time()
 def retrieve_weight(ard):
 	print "Retrive Weight thread"
 	while 1:
@@ -46,22 +46,30 @@ def display_weight(ard,lcd):
 			lcd.gotorc(5,0)
 			lcd.text("%.2f kgs" % ard.last_weight)
 			time.sleep(0.5)
+def sync_data():
+	while 1:
+		send_data()
+		time.sleep(30)
 
 try:
 	try:
 		print 'Iniciando botones'
-		GPIO.setmode(GPIO.BCM) 
-		GPIO.setup(25, GPIO.IN, pull_up_down = GPIO.PUD_UP)  
-		GPIO.setup(22, GPIO.IN, pull_up_down = GPIO.PUD_UP)  
-		GPIO.add_event_detect(25, GPIO.FALLING, callback = Int_shutdown, bouncetime = 2000)
-		GPIO.add_event_detect(22, GPIO.FALLING, callback = Int_shutdown2, bouncetime = 1000)
-	except:
+#		GPIO.setmode(GPIO.BCM) 
+#		GPIO.setup(25, GPIO.IN, pull_up_down = GPIO.PUD_UP)  
+	#	GPIO.setup(22, GPIO.IN, pull_up_down = GPIO.PUD_UP)  
+#		GPIO.add_event_detect(25, GPIO.FALLING, callback = Int_shutdown, bouncetime = 2000)
+	#	GPIO.add_event_detect(22, GPIO.RISING, callback = Int_shutdown2, bouncetime = 1000)
+		RPIO.add_interrupt_callback(22, Int_shutdown2, edge='rising', debounce_timeout_ms=1000)
+		RPIO.add_interrupt_callback(25, Int_shutdown, edge='rising', debounce_timeout_ms=1000)
+		RPIO.wait_for_interrupts(threaded=True)
+	except Exception,e:
 		print 'Error al iniciar botones'
+		print e
 	try:
 		print 'Iniciando LCD'
 		lcd.init()
 		lcd.cls()
-		lcd.set_contrast(180)
+		lcd.set_contrast(250)
 		lcd.backlight(OFF)
 	except:
 		print 'Error al iniciar LCD'
@@ -106,6 +114,7 @@ try:
 		print ard.ser
 		thread.start_new_thread( retrieve_weight ,(ard, ) )
 		thread.start_new_thread( display_weight ,(ard, lcd, ) )
+		thread.start_new_thread( sync_data ,() )
 	except Exception,e:
 		print 'Error al iniciar conexion serial'
 		print str(e)
