@@ -12,6 +12,8 @@ import thread
 import RPi.GPIO as GPIO
 import RPIO
 
+lcdlock = thread.allocate_lock()
+
 delay = 30
 path='/home/pi/RCerezas_v1/'
 if not os.geteuid() == 0:
@@ -42,7 +44,7 @@ def display_weight(ard,lcd):
 	print "Display Weight Thread"
 	time.sleep(1)
 	while 1:
-		if not ard.asking:
+		with lcdlock:
 			lcd.gotorc(5,0)
 			lcd.text("%.2f kgs" % ard.last_weight)
 			time.sleep(0.5)
@@ -67,36 +69,41 @@ try:
 		print e
 	try:
 		print 'Iniciando LCD'
-		lcd.init()
-		lcd.cls()
-		lcd.set_contrast(250)
-		lcd.backlight(OFF)
+		with lcdlock:
+			lcd.init()
+			lcd.cls()
+			lcd.set_contrast(250)
+			lcd.backlight(OFF)
 	except:
 		print 'Error al iniciar LCD'
 
 	lcd.centre_text(0,"Verificando Internet...")
 	print "Verificando Internet"
 	if internet_on():
-		lcd.cls()
-		lcd.centre_text(0,"Bajando Registro de nombres...")
+		with lcdlock:
+			lcd.cls()
+			lcd.centre_text(0,"Bajando Registro de nombres...")
 		print "Bajando registro de nombres"
 		try:
 			dowloadNombreTarjeta()
 		except:
 			print "No se pudo bajar registro"
 	else:
-		lcd.cls()
-		lcd.centre_text(0,"No hay internet...")
+		with lcdlock:
+			lcd.cls()
+			lcd.centre_text(0,"No hay internet...")
 		print "No hay internet"
 	if os.path.isfile(path+'data/NombreTarjeta.csv'):
-		lcd.cls()
-		lcd.centre_text(0,"Ocupando registro...")
+		with lcdlock:
+			lcd.cls()
+			lcd.centre_text(0,"Ocupando registro...")
 		print "Ocupando registro"
 		cardID_Name = create_cardID_Name_dict()
 		cardID_RUT = create_cardID_RUT_dict()
 	else:
-		lcd.cls()
-		lcd.centre_text(0,"No hay registro de nombres")
+		with lcdlock:
+			lcd.cls()
+			lcd.centre_text(0,"No hay registro de nombres")
 		sys.exit('No hay registro de nombres')
 #Verifica si el existe el archivo IDlastbin.txt y si no lo crea con un cero
 	if not os.path.isfile(path+'data/IDlastbin.txt'):
@@ -139,9 +146,10 @@ try:
 		ftemp.write("Bin %d\n" % IDbin)
 		ftemp.close()
 		registro = []
-		lcd.cls()
-		lcd.gotorc(0,0)
-		lcd.text("Listo para leer")
+		with lcdlock:
+			lcd.cls()
+			lcd.gotorc(0,0)
+			lcd.text("Listo para leer")
 		nroCajas = 0
 		while nroCajas<=24:
 #Espera hasta leer la tarjeta
@@ -161,8 +169,9 @@ try:
 				diff=delay+10
 				kgs=0
 			if diff<delay:
-				lcd.cls()
-				lcd.centre_text(0,"Tienes que esperar %d seg antes de la proxima caja" % delay)
+				with lcdlock:
+					lcd.cls()
+					lcd.centre_text(0,"Tienes que esperar %d seg antes de la proxima caja" % delay)
 #Registra la marca en la lista registro y en el archivo temp.
 			else:
 				weight_aux=0.0
@@ -181,15 +190,16 @@ try:
 				ftemp.close()
 				user_count = len(cajas)+1
 				print user_count
-				lcd.cls()
-				lcd.gotorc(0,0)
-				lcd.text(cardID_Name.get(cardID,'No asignado'))
-				lcd.gotorc(3,0)
-				lcd.text("Cajas: "+str(user_count))
-				nroCajas+=1
-				lcd.gotorc(4,0)
-				lcd.text("kg: %.2f" % (kgs+weight))
-#				lcd.centre_text(4,"%d/24 cajas" % nroCajas)
+				with lcdlock:
+					lcd.cls()
+					lcd.gotorc(0,0)
+					lcd.text(cardID_Name.get(cardID,'No asignado'))
+					lcd.gotorc(3,0)
+					lcd.text("Cajas: "+str(user_count))
+					nroCajas+=1
+					lcd.gotorc(4,0)
+					lcd.text("kg: %.2f" % (kgs+weight))
+#					lcd.centre_text(4,"%d/24 cajas" % nroCajas)
 				print cardID
 				print nroCajas
 #Cuando se termina el bin o se pone la tarjeta nuevobin se mueve el archivo temp.csv a BinXX.csv. Se actualiza el ID del ultimo bin.
@@ -203,8 +213,9 @@ except KeyboardInterrupt:
 except Exception,e: 
 	print str(e)
 finally:
-	lcd.cls()
-	lcd.backlight(OFF)
+	with lcdlock:
+		lcd.cls()
+		lcd.backlight(OFF)
 	try:
 		ard.ser.close()
 	except:
