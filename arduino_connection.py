@@ -11,14 +11,18 @@ class Arduino:
 		time.sleep(2)
 		self.asking = False
 		self.last_weight = 0
+		self.last_battery = 0
+		self.battery_min = 900
+		self.battery_max = 960
 		self.time = time.time() 
 	def read_weight(self):
 #		self.asking=True
 		self.ser.write('1')
-		adc = int(self.ser.readline().rstrip())
+		adc = self.ser.readline()[0:-2].split(',') 
 #		self.asking = False
-		weight = self.slope*adc+self.intercept
+		weight = self.slope*int(adc[0])+self.intercept
 #		print weight
+		self.last_battery = (int(adc[1])-self.battery_min)*5/(self.battery_max-self.battery_min)
 		self.last_weight = weight
 		return weight
 	def set_zero(self):

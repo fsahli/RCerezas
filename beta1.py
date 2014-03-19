@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import pcd8544.lcd as lcd
+from spilcd import *
 import time, os, sys
 from datetime import datetime
 from readtest import readCard
@@ -27,9 +27,9 @@ def Int_shutdown(gpio_id,val):
 	print "Shutdown"
 	ard.ser.write('2')
 	os.system("sudo shutdown -h now")
-	lcd.cls()
-	lcd.gotorc(1,0)
-	lcd.text("Apagando")
+	lcd.clear()
+	lcd.goto(1,0)
+	lcd.write("Apagando")
 	sys.exit("Apagando")
 def Int_shutdown2(gpio_id,val):
 	ard.set_zero()
@@ -45,8 +45,18 @@ def display_weight(ard,lcd):
 	time.sleep(1)
 	while 1:
 		with lcdlock:
-			lcd.gotorc(5,0)
-			lcd.text("%.2f kgs" % ard.last_weight)
+			lcd.goto(3,0)
+			lcd.write("%.1f kgs" % ard.last_weight)
+			lcd.goto(3,11)
+			lcd.write("Bat:")
+			st=''
+			if ard.last_battery<=5:
+				for i in range(ard.last_battery):
+					st+=chr(219)
+			else:
+				st='Carga'
+			lcd.goto(3,15)
+			lcd.write(st)
 			time.sleep(0.5)
 def sync_data():
 	while 1:
@@ -70,19 +80,20 @@ try:
 	try:
 		print 'Iniciando LCD'
 		with lcdlock:
-			lcd.init()
-			lcd.cls()
-			lcd.set_contrast(250)
-			lcd.backlight(OFF)
+			lcd = SpiLcd()
+			lcd.clear()
+			lcd.set_backlight(False)
 	except:
 		print 'Error al iniciar LCD'
-
-	lcd.centre_text(0,"Verificando Internet...")
+	lcd.clear()
+	lcd.goto(0)
+	lcd.write("Verificando Internet...")
 	print "Verificando Internet"
 	if internet_on():
 		with lcdlock:
-			lcd.cls()
-			lcd.centre_text(0,"Bajando Registro de nombres...")
+			lcd.clear()
+			lcd.goto(0)
+			lcd.write("Bajando Registro de nombres...")
 		print "Bajando registro de nombres"
 		try:
 			dowloadNombreTarjeta()
@@ -90,20 +101,23 @@ try:
 			print "No se pudo bajar registro"
 	else:
 		with lcdlock:
-			lcd.cls()
-			lcd.centre_text(0,"No hay internet...")
+			lcd.clear()
+			lcd.goto(0)
+			lcd.write("No hay internet...")
 		print "No hay internet"
 	if os.path.isfile(path+'data/NombreTarjeta.csv'):
 		with lcdlock:
-			lcd.cls()
-			lcd.centre_text(0,"Ocupando registro...")
+			lcd.clear()
+			lcd.goto(0)
+			lcd.write("Ocupando registro...")
 		print "Ocupando registro"
 		cardID_Name = create_cardID_Name_dict()
 		cardID_RUT = create_cardID_RUT_dict()
 	else:
 		with lcdlock:
-			lcd.cls()
-			lcd.centre_text(0,"No hay registro de nombres")
+			lcd.clear()
+			lcd.goto(0)
+			lcd.write("No hay registro de nombres")
 		sys.exit('No hay registro de nombres')
 #Verifica si el existe el archivo IDlastbin.txt y si no lo crea con un cero
 	if not os.path.isfile(path+'data/IDlastbin.txt'):
@@ -147,9 +161,9 @@ try:
 		ftemp.close()
 		registro = []
 		with lcdlock:
-			lcd.cls()
-			lcd.gotorc(0,0)
-			lcd.text("Listo para leer")
+			lcd.clear()
+			lcd.goto(0,0)
+			lcd.write("Listo para leer")
 		nroCajas = 0
 		while nroCajas<=24:
 #Espera hasta leer la tarjeta
@@ -170,8 +184,14 @@ try:
 				kgs=0
 			if diff<delay:
 				with lcdlock:
-					lcd.cls()
-					lcd.centre_text(0,"Tienes que esperar %d seg antes de la proxima caja" % delay)
+					lcd.clear()
+					lcd.goto(0)
+					lcd.write("Tienes que esperar")
+					lcd.goto(1)
+					lcd.write("%d seg antes de la" % delay)
+					lcd.goto(2)
+					lcd.write("proxima caja")
+
 #Registra la marca en la lista registro y en el archivo temp.
 			else:
 				weight_aux=0.0
@@ -180,8 +200,8 @@ try:
 					weight_aux=weight
 					weight = ard.last_weight
 					time.sleep(0.12)
-				#	lcd.gotorc(5,0)
-				#	lcd.text("%.2f kgs" % ard.read_weight())
+				#	lcd.goto(5,0)
+				#	lcd.write("%.2f kgs" % ard.read_weight())
 				timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
 				registro.append([timestamp,cardID,cardID_RUT.get(cardID,'No asignado'),weight])
@@ -191,14 +211,14 @@ try:
 				user_count = len(cajas)+1
 				print user_count
 				with lcdlock:
-					lcd.cls()
-					lcd.gotorc(0,0)
-					lcd.text(cardID_Name.get(cardID,'No asignado'))
-					lcd.gotorc(3,0)
-					lcd.text("Cajas: "+str(user_count))
+					lcd.clear()
+					lcd.goto(0,0)
+					lcd.write(cardID_Name.get(cardID,'No asignado'))
+					lcd.goto(3,0)
+					lcd.write("Cajas: "+str(user_count))
 					nroCajas+=1
-					lcd.gotorc(4,0)
-					lcd.text("kg: %.2f" % (kgs+weight))
+					lcd.goto(4,0)
+					lcd.write("kg: %.2f" % (kgs+weight))
 #					lcd.centre_text(4,"%d/24 cajas" % nroCajas)
 				print cardID
 				print nroCajas
@@ -214,8 +234,8 @@ except Exception,e:
 	print str(e)
 finally:
 	with lcdlock:
-		lcd.cls()
-		lcd.backlight(OFF)
+		lcd.clear()
+		lcd.backlight(False)
 	try:
 		ard.ser.close()
 	except:
