@@ -55,6 +55,13 @@ def display_weight(ard,lcd):
 					st+=chr(219)
 			else:
 				st='Carga'
+			if ard.last_battery<0:
+				ard.ser.write('2')
+				os.system("sudo shutdown -h now")
+				lcd.clear()
+				lcd.goto(1,0)
+				lcd.write("Apagando")
+				sys.exit("Apagando")
 			lcd.goto(3,15)
 			lcd.write(st)
 			time.sleep(0.5)
@@ -165,7 +172,7 @@ try:
 			lcd.goto(0,0)
 			lcd.write("Listo para leer")
 		nroCajas = 0
-		while nroCajas<=24:
+		while nroCajas<=1000:
 #Espera hasta leer la tarjeta
 			cardID=readCard()
 #Si es que la tarjeta es para renovar el bin, sale del while y empieza de nuevo
